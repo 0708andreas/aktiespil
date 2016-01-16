@@ -1,0 +1,55 @@
+<html>
+    <head>
+        <title>Team</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
+        <script src="http://canvasjs.com/assets/script/canvasjs.min.js"></script>
+        <script>        
+            window.onload = function () {
+                var xVal = 0;
+                var yVal = 100;	
+                var updateInterval = 100;
+                var dataLength = 50; // number of dataPoints visible at any point
+
+                var charts = ["smør", "mælk"];
+                var aktier = {};
+                for (var i = 0; i<charts.length; i++) {
+                    var name = charts[i];
+                    aktier[name] = {};
+                    aktier[name]["data"] = [{x: 0, y: 100}];
+                    aktier[name]['chart'] = new CanvasJS.Chart(name, {
+                        title: {
+                            text: name
+                        },
+                        data: [{
+                            type: "line",
+                            dataPoints: aktier[name]["data"]
+                        }]
+                    });
+                    aktier[name]['chart'].render();
+                };
+                xVal++;
+                var socket = io("http://localhost:8080");
+                socket.on("update_aktier", function(msg){
+                    console.log(msg);
+                    //document.querySelector("#show_aktier").innerHTML = msg;
+                    var aktData = JSON.parse(msg);
+                    for (key in aktData) {
+                        console.log(key)
+                        aktier[key]['data'].push({x: xVal, y: aktData[key]});
+                        if (aktier[key]['data'].length > dataLength) {
+                            aktier[key]['data'].shift();
+                        }
+                        aktier[key]['chart'].render();
+                    }
+                    xVal++;
+                });
+            };
+            </script>
+        <div id="show_aktier"></div>
+        <div id="smør" style="height:400px; width:45%"></div>
+        <div id="mælk" style="height:400px; width:45%"></div>
+    </body>
+</html>
