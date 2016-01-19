@@ -7,49 +7,72 @@
         <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
         <script src="http://canvasjs.com/assets/script/canvasjs.min.js"></script>
         <script>        
-            window.onload = function () {
-                var xVal = 0;
-                var yVal = 100;	
-                var updateInterval = 100;
-                var dataLength = 50; // number of dataPoints visible at any point
+            var state;
+            var socket = io("http://localhost:8080");
+            socket.emit("sign_in", "team1");
+            socket.on("own_details", function(msg) {
+                state = msg;
+                document.querySelector("#status").innerHTML = JSON.stringify(msg);
+                console.log(state)
+            });
+            
+            function sell() {
+                var sel = document.querySelector("#sell_aktie");
+                var aktie = sel.options[sel.selectedIndex].value;
+                var amount = parseInt(document.querySelector("#sell_amount").value);
+                
+                socket.emit("sell_action", [aktie, amount]);
+            };
+            
+            function buy() {
+                var sel = document.querySelector("#buy_aktie");
+                var aktie = sel.options[sel.selectedIndex].value;
+                var amount = parseInt(document.querySelector("#buy_amount").value);
+                
+                socket.emit("buy_action", [aktie, amount]);
+            };
 
-                var charts = ["smør", "mælk"];
-                var aktier = {};
-                for (var i = 0; i<charts.length; i++) {
-                    var name = charts[i];
-                    aktier[name] = {};
-                    aktier[name]["data"] = [{x: 0, y: 100}];
-                    aktier[name]['chart'] = new CanvasJS.Chart(name, {
-                        title: {
-                            text: name
-                        },
-                        data: [{
-                            type: "line",
-                            dataPoints: aktier[name]["data"]
-                        }]
-                    });
-                    aktier[name]['chart'].render();
+            function populateDropdowns(e) { //Ask for list of stocks
+                //console.log(JSON.stringify(status));
+                var aktier = state['aktier'];
+                var sel1 = document.getElementById(e + '_aktie');
+                var fragment = document.createDocumentFragment();
+                
+                for (aktie in aktier ) {
+                    var opt = document.createElement('option');
+                    opt.innerHTML = aktie;
+                    opt.value = aktie;
+                    fragment.appendChild(opt);
                 };
-                xVal++;
-                var socket = io("http://localhost:8080");
-                socket.on("update_aktier", function(msg){
-                    console.log(msg);
-                    //document.querySelector("#show_aktier").innerHTML = msg;
-                    var aktData = JSON.parse(msg);
-                    for (key in aktData) {
-                        console.log(key)
-                        aktier[key]['data'].push({x: xVal, y: aktData[key]});
-                        if (aktier[key]['data'].length > dataLength) {
-                            aktier[key]['data'].shift();
-                        }
-                        aktier[key]['chart'].render();
-                    }
-                    xVal++;
-                });
+                
+                sel1.appendChild(fragment);
+            }
+            window.onload = function () {
+                document.querySelector("#buy_form").addEventListener("submit", buy, false);
+                document.querySelector("#sell_form").addEventListener("submit", sell, false);
             };
             </script>
-        <div id="show_aktier"></div>
+<!--        <div id="show_aktier"></div>
         <div id="smør" style="height:400px; width:45%"></div>
-        <div id="mælk" style="height:400px; width:45%"></div>
+        <div id="mælk" style="height:400px; width:45%"></div>-->
+        <button onclick="populateDropdowns('sell'); document.querySelector('#sell_div').style.display = 'block'">Sælg!</button>
+        <div id="sell_div" style="display:none">
+            <form id="sell_form" action="">
+                <select id="sell_aktie"></select>
+                <input id="sell_amount" type="number" value=1>
+                <input type="submit" value="Sælg!">
+            </form>
+        </div>
+
+        <button onclick="populateDropdowns('buy'); document.querySelector('#buy_div').style.display = 'block'">Køb!</button>
+        <div id="buy_div" style="display:none">
+            <form id="buy_form" action="">
+                <select id="buy_aktie"></select>
+                <input id="buy_amount" type="number" value=1>
+                <input type="submit" value="Køb!">
+            </form>
+        </div>
+
+        <div id="status"></div>
     </body>
 </html>

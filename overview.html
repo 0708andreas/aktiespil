@@ -33,11 +33,9 @@
                 xVal++;
                 var socket = io("http://localhost:8080");
                 socket.on("update_aktier", function(msg){
-                    console.log(msg);
                     //document.querySelector("#show_aktier").innerHTML = msg;
-                    var aktData = JSON.parse(msg);
+                    var aktData = msg;
                     for (key in aktData) {
-                        console.log(key)
                         aktier[key]['data'].push({x: xVal, y: aktData[key]});
                         if (aktier[key]['data'].length > dataLength) {
                             aktier[key]['data'].shift();
@@ -49,7 +47,7 @@
             };
             </script>
         <div id="show_aktier"></div>
-        <div id="smør" style="height:400px; width:45%"></div>
+        <div id="smør" style="height:400px; width:45%"><span>Vi snakker smør</span></div>
         <div id="mælk" style="height:400px; width:45%"></div>
     </body>
 </html>
