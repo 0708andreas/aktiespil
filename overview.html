@@ -2,6 +2,7 @@
     <head>
         <title>Aktier</title>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
         <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
@@ -23,6 +24,9 @@
                         title: {
                             text: name
                         },
+                        axisY: {
+                            includeZero: false
+                        },
                         data: [{
                             type: "line",
                             dataPoints: aktier[name]["data"]
@@ -31,7 +35,7 @@
                     aktier[name]['chart'].render();
                 };
                 xVal++;
-                var socket = io("http://localhost:8080");
+                var socket = io();
                 socket.on("update_aktier", function(msg){
                     //document.querySelector("#show_aktier").innerHTML = msg;
                     var aktData = msg;
@@ -40,6 +44,7 @@
                         if (aktier[key]['data'].length > dataLength) {
                             aktier[key]['data'].shift();
                         }
+                        aktier[key]['chart'].options.title.text = key + " (" + aktData[key] + ")";
                         aktier[key]['chart'].render();
                     }
                     xVal++;
@@ -47,7 +52,9 @@
             };
             </script>
         <div id="show_aktier"></div>
-        <div id="smør" style="height:400px; width:45%"><span>Vi snakker smør</span></div>
+        <div id="smør" style="height:400px; width:45%">
+            <span>Vi snakker smør</span>
+        </div>
         <div id="mælk" style="height:400px; width:45%"></div>
     </body>
 </html>

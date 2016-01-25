@@ -2,19 +2,61 @@
     <head>
         <title>Team</title>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
         <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
         <script src="http://canvasjs.com/assets/script/canvasjs.min.js"></script>
         <script>        
             var state;
-            var socket = io("http://localhost:8080");
-            socket.emit("sign_in", "team1");
+            var aktier = {};
+            var socket = io();
+            //var teamname = prompt("Indtast et teamnavn. Hvis du skriver et navn, der er i brug, bliver du logget ind på det team.");
+            var teamname = "team1";
+            socket.emit("sign_in", teamname);
             socket.on("own_details", function(msg) {
                 state = msg;
                 document.querySelector("#status").innerHTML = JSON.stringify(msg);
                 console.log(state)
             });
+            
+            socket.on("update_aktier", function(msg) {
+                aktier = msg;
+                var nextMoney = state['money'];
+                if (document.querySelector('#sell_toggle').checked) {
+                    var sel = document.querySelector('#sell_aktie');
+                    var aktie = sel.options[sel.selectedIndex].value;
+                    var amount = parseInt(document.querySelector("#sell_amount").value);
+                    nextMoney += aktier[aktie] * amount;
+                }
+                if (document.querySelector('#buy_toggle').checked) {
+                    var sel = document.querySelector('#buy_aktie');
+                    var aktie = sel.options[sel.selectedIndex].value;
+                    var amount = parseInt(document.querySelector("#buy_amount").value);
+                    nextMoney -= aktier[aktie] * amount;
+                }
+                if (document.querySelector('#sell_toggle').checked || document.querySelector('#buy_toggle').checked) {
+                    document.querySelector('#forecast').style.display = 'block';
+                    document.querySelector('#nextMoney').innerHTML = nextMoney;
+                } else {
+                    document.querySelector('forecast').style.display = 'none';
+                }
+            });
+            socket.on('error_msg', function (msg) {
+                console.log("Error: " + msg)
+                alert("Der skete en fejl: " + msg);
+            })
+            
+            function buy_sell_action() {
+                if (document.querySelector('#buy_toggle').checked && document.querySelector('#sell_toggle').checked) {
+                    //Oh dear, this math is complicated. I'll get back to it
+                    //var consent = confirm("");
+                } else if(document.querySelector('#sell_toggle').checked) {
+                    sell();
+                } else if(document.querySelector('#buy_toggle').checked) {
+                    buy();
+                }
+            }
             
             function sell() {
                 var sel = document.querySelector("#sell_aktie");
@@ -36,6 +78,7 @@
                 //console.log(JSON.stringify(status));
                 var aktier = state['aktier'];
                 var sel1 = document.getElementById(e + '_aktie');
+                sel1.innerHTML = "";
                 var fragment = document.createDocumentFragment();
                 
                 for (aktie in aktier ) {
@@ -46,33 +89,35 @@
                 };
                 
                 sel1.appendChild(fragment);
+                
+                var toggleState = document.querySelector('#' + e + '_toggle').checked;
+                var eitherState = document.querySelector('#buy_toggle').checked || document.querySelector('#sell_toggle').checked;
+                document.querySelector('#' + e + '_div').style.display = (toggleState ? 'block' : 'none');
+                document.querySelector('#do_action').style.display = (eitherState ? 'block' : 'none');
             }
             window.onload = function () {
-                document.querySelector("#buy_form").addEventListener("submit", buy, false);
-                document.querySelector("#sell_form").addEventListener("submit", sell, false);
             };
-            </script>
-<!--        <div id="show_aktier"></div>
-        <div id="smør" style="height:400px; width:45%"></div>
-        <div id="mælk" style="height:400px; width:45%"></div>-->
-        <button onclick="populateDropdowns('sell'); document.querySelector('#sell_div').style.display = 'block'">Sælg!</button>
+        </script>
+        <h2>Hvad vil du gøre?</h2>
+        <div><label><input id="sell_toggle" checked=false type=checkbox onclick="populateDropdowns('sell');"></input>Sælge!</label></div>
         <div id="sell_div" style="display:none">
-            <form id="sell_form" action="">
-                <select id="sell_aktie"></select>
-                <input id="sell_amount" type="number" value=1>
-                <input type="submit" value="Sælg!">
-            </form>
+            <select id="sell_aktie"></select>
+            <input id="sell_amount" type="number" value=1>
         </div>
 
-        <button onclick="populateDropdowns('buy'); document.querySelector('#buy_div').style.display = 'block'">Køb!</button>
+        <div><label><input id="buy_toggle" checked=false type=checkbox onclick="populateDropdowns('buy');"></input>Købe!</label></div>
         <div id="buy_div" style="display:none">
-            <form id="buy_form" action="">
-                <select id="buy_aktie"></select>
-                <input id="buy_amount" type="number" value=1>
-                <input type="submit" value="Køb!">
-            </form>
+            <select id="buy_aktie"></select>
+            <input id="buy_amount" type="number" value=1>
         </div>
-
+        <button id="do_action" onclick="buy_sell_action()" style="display: none">Engage!</button>
+        
+        <div id="forecast" style="display: none;">
+            <h2>Efter denne transaktion</h2>
+            Vil du have <div id="nextMoney"></div> DKK.
+        </div>
+        
+        <h2>Din status</h2>
         <div id="status"></div>
     </body>
 </html>
