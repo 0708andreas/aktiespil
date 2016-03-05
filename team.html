@@ -7,53 +7,127 @@
     <body>
         <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
         <script src="http://canvasjs.com/assets/script/canvasjs.min.js"></script>
+        
+        <script src="bower_components/webcomponentsjs/webcomponents-lite.min.js">
+        </script>
+        
+        <!-- 2. Use an HTML Import to bring in some elements. -->
+        <link rel="import" href="bower_components/paper-button/paper-button.html">
+        <link rel="import" href="bower_components/paper-card/paper-card.html">
+        
+        <style>
+        @import url(https://fonts.googleapis.com/css?family=Droid+Sans);
+        body {
+            font-family: Droid Sans, sans-serif;
+        }
+        </style>
+        
         <script>        
             var state;
             var aktier = {};
             var socket = io();
-            //var teamname = prompt("Indtast et teamnavn. Hvis du skriver et navn, der er i brug, bliver du logget ind på det team.");
-            var teamname = "team1";
-            socket.emit("sign_in", teamname);
+            var teamname = prompt("Indtast et teamnavn. Hvis du skriver et navn, der er i brug, bliver du logget ind på det team.");
+            //var teamname = "team1";
             socket.on("own_details", function(msg) {
                 state = msg;
-                document.querySelector("#status").innerHTML = JSON.stringify(msg);
+                //document.querySelector("#status").innerHTML = JSON.stringify(msg, 4);
                 console.log(state)
+                document.getElementById('status').innerHTML = "";
+                document.getElementById('cards').innerHTML = "";
+                var statCard = document.createElement("paper-card");
+                statCard.setAttribute("heading", "Status");
+                statCard.setAttribute("elevation", "5")
+                //statCard.style. = "";
+                var statContent = document.createElement('div');
+                statContent.className = "card-content";
+                statContent.innerHTML = "";
+                for (key in state.aktier) {
+                    statContent.innerHTML += key + ": " + state.aktier[key] + "<br>";
+                };
+                statContent.innerHTML += "<hr><b>money: " + state.money + "</b>";
+                console.log(state.locked + "; " + new Date());
+                if (new Date(state.locked) > new Date()) {
+                    console.log("locked");
+                    statContent.innerHTML += "<br>I er låst indtil " + new Date(state.locked) + "<br>I kan stadig købe og sælge, men ikke bruge kort.";
+                }
+                statCard.appendChild(statContent);
+                document.getElementById('status').appendChild(statCard);
+                for (var i = 0; i<state.cards.length; i++) {
+                    var cards = state.cards
+                    var card = document.createElement('paper-card');
+                    card.setAttribute("heading", "Aktiekort");
+                    card.setAttribute("elevation", "5")
+                    card.style.margin = "25px";
+                    var Ccontent = document.createElement('div');
+                    Ccontent.className = "card-content";
+                    Ccontent.innerHTML = "Hæver " + cards[i].raises.stock + " med " + cards[i].raises.amount + "<br>Sænker " + cards[i].lowers.stock + " med " + cards[i].lowers.amount;
+                    if (cards[i].money != 0) {
+                        Ccontent.innerHTML += "<br>Money: " + cards[i].money;
+                        console.log(cards[i].money  + ":" + Ccontent.innerHTML);
+                    }
+                    console.log(Ccontent.innerHTML);
+                    var actions = document.createElement('div');
+                    actions.className = "card-actions";
+                    actions.innerHTML = "<paper-button raised style='background-color: var(--paper-indigo-500);' onclick='playCard(" + i + ")'>Brug dette kort</paper-button>";
+                    card.appendChild(Ccontent);
+                    card.appendChild(actions);
+                    document.getElementById("cards").appendChild(card);
+                }
             });
             
-            socket.on("update_aktier", function(msg) {
-                aktier = msg;
-                var nextMoney = state['money'];
-                if (document.querySelector('#sell_toggle').checked) {
-                    var sel = document.querySelector('#sell_aktie');
-                    var aktie = sel.options[sel.selectedIndex].value;
-                    var amount = parseInt(document.querySelector("#sell_amount").value);
-                    nextMoney += aktier[aktie] * amount;
-                }
-                if (document.querySelector('#buy_toggle').checked) {
-                    var sel = document.querySelector('#buy_aktie');
-                    var aktie = sel.options[sel.selectedIndex].value;
-                    var amount = parseInt(document.querySelector("#buy_amount").value);
-                    nextMoney -= aktier[aktie] * amount;
-                }
+            function updateNextMoney() {
                 if (document.querySelector('#sell_toggle').checked || document.querySelector('#buy_toggle').checked) {
+                    var nextMoney = state['money'];
+                    if (document.querySelector('#sell_toggle').checked) {
+                        var sel = document.querySelector('#sell_aktie');
+                        var aktie = sel.options[sel.selectedIndex].value;
+                        var amount = parseInt(document.querySelector("#sell_amount").value);
+                        nextMoney += aktier[aktie] * amount;
+                    }
+                    if (document.querySelector('#buy_toggle').checked) {
+                        var sel = document.querySelector('#buy_aktie');
+                        var aktie = sel.options[sel.selectedIndex].value;
+                        var amount = parseInt(document.querySelector("#buy_amount").value);
+                        nextMoney -= aktier[aktie] * amount;
+                    }
                     document.querySelector('#forecast').style.display = 'block';
                     document.querySelector('#nextMoney').innerHTML = nextMoney;
                 } else {
-                    document.querySelector('forecast').style.display = 'none';
+                    document.querySelector('#forecast').style.display = 'none';
                 }
+            }
+            
+            socket.on("update_aktier", function(msg) {
+                aktier = msg;
+                updateNextMoney();
             });
             socket.on('error_msg', function (msg) {
                 console.log("Error: " + msg)
                 alert("Der skete en fejl: " + msg);
             })
             
+            function playCard(index) {
+                socket.emit('card_action', [state.cards[index], index]);
+            }
+            
             function buy_sell_action() {
                 if (document.querySelector('#buy_toggle').checked && document.querySelector('#sell_toggle').checked) {
-                    //Oh dear, this math is complicated. I'll get back to it
-                    //var consent = confirm("");
+                    //TODO: make this work
+                    var Ssel = document.querySelector("#sell_aktie");
+                    var Saktie = Ssel.options[Ssel.selectedIndex].value;
+                    var Samount = parseInt(document.querySelector("#sell_amount").value);
+                    
+                    var Bsel = document.querySelector("#buy_aktie");
+                    var Baktie = Bsel.options[Bsel.selectedIndex].value;
+                    var Bamount = parseInt(document.querySelector("#buy_amount").value);
+                    if (isNaN(Samount) || isNaN(Bamount) || Samount <= 0 || Bamount <= 0) {
+                        return false;
+                    }
+                    socket.emit("buy_sell_action", {buy: [Baktie, Bamount], sell: [Saktie, Samount]});
                 } else if(document.querySelector('#sell_toggle').checked) {
                     sell();
                 } else if(document.querySelector('#buy_toggle').checked) {
+                    console.log('bey');
                     buy();
                 }
             }
@@ -62,7 +136,9 @@
                 var sel = document.querySelector("#sell_aktie");
                 var aktie = sel.options[sel.selectedIndex].value;
                 var amount = parseInt(document.querySelector("#sell_amount").value);
-                
+                if (isNaN(amount) || amount <= 0) {
+                    return false;
+                }
                 socket.emit("sell_action", [aktie, amount]);
             };
             
@@ -70,12 +146,13 @@
                 var sel = document.querySelector("#buy_aktie");
                 var aktie = sel.options[sel.selectedIndex].value;
                 var amount = parseInt(document.querySelector("#buy_amount").value);
-                
+                if (isNaN(amount) || amount <= 0) {
+                    return false;
+                }
                 socket.emit("buy_action", [aktie, amount]);
             };
 
             function populateDropdowns(e) { //Ask for list of stocks
-                //console.log(JSON.stringify(status));
                 var aktier = state['aktier'];
                 var sel1 = document.getElementById(e + '_aktie');
                 sel1.innerHTML = "";
@@ -94,30 +171,38 @@
                 var eitherState = document.querySelector('#buy_toggle').checked || document.querySelector('#sell_toggle').checked;
                 document.querySelector('#' + e + '_div').style.display = (toggleState ? 'block' : 'none');
                 document.querySelector('#do_action').style.display = (eitherState ? 'block' : 'none');
+                updateNextMoney();
             }
             window.onload = function () {
+                document.querySelector('#sell_toggle').checked = false;
+                document.querySelector('#buy_toggle').checked = false;
+                socket.emit("sign_in", teamname);
             };
         </script>
         <h2>Hvad vil du gøre?</h2>
         <div><label><input id="sell_toggle" checked=false type=checkbox onclick="populateDropdowns('sell');"></input>Sælge!</label></div>
         <div id="sell_div" style="display:none">
             <select id="sell_aktie"></select>
-            <input id="sell_amount" type="number" value=1>
+            <input id="sell_amount" type="number" min=0 value=1>
         </div>
 
         <div><label><input id="buy_toggle" checked=false type=checkbox onclick="populateDropdowns('buy');"></input>Købe!</label></div>
         <div id="buy_div" style="display:none">
             <select id="buy_aktie"></select>
-            <input id="buy_amount" type="number" value=1>
+            <input id="buy_amount" type="number" min=0 value=1>
         </div>
         <button id="do_action" onclick="buy_sell_action()" style="display: none">Engage!</button>
         
         <div id="forecast" style="display: none;">
             <h2>Efter denne transaktion</h2>
-            Vil du have <div id="nextMoney"></div> DKK.
+            Vil du have <span id="nextMoney"></span> DKK.
         </div>
         
         <h2>Din status</h2>
-        <div id="status"></div>
+        <div id="status" style="padding:50px; display:flex; flex-wrap:wrap; align-items: center; justify-content: center;"></div>
+        
+        <div id="cards" style="padding:50px; display:flex; flex-wrap:wrap; align-items: center; justify-content: center;">
+            
+        </div>
     </body>
 </html>
